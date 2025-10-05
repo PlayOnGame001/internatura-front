@@ -1,34 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { z } from "zod";
 import { Button, Input } from "../UI";
-
-const schema = z.object({
-	username: z
-		.string()
-		.min(3, "Username must be at least 3 characters long.")
-		.max(10, "Username must not exceed 10 characters")
-		.regex(
-			/^[a-zA-Z0-9_]+$/,
-			"The username can only contain letters, numbers and underscores.",
-		),
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Please enter a valid email address")
-		.regex(
-			/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-			"Invalid email address format",
-		),
-	password: z
-		.string()
-		.min(4, "The password must contain at least 4 characters.")
-		.max(10, "The password must not exceed 10 characters.")
-		.regex(/\d/, "The password must contain at least one number."),
-});
-
-type FormData = z.infer<typeof schema>;
+import { registerUser } from "../data/Api/api";
+import { userRegisterSchema, type UserRegisterFormData } from "../UI/schemaUserRegister";
 
 export default function RegisterPage() {
 	const navigate = useNavigate();
@@ -36,14 +11,18 @@ export default function RegisterPage() {
 		register,
 		handleSubmit,
 		formState: { errors },
-	} = useForm<FormData>({
-		resolver: zodResolver(schema),
+	} = useForm<UserRegisterFormData>({
+		resolver: zodResolver(userRegisterSchema),
 	});
 
-	const onSubmit = (data: FormData) => {
-		console.log("Register:", data);
-		alert("Register good (mockap)");
-		navigate("/news");
+	const onSubmit = async ({ email, username, password }: UserRegisterFormData) => {
+		try {
+			await registerUser(email, username, password);
+			alert("✅ Registered successfully!");
+			navigate("/log");
+		} catch (err: any) {
+			alert(err.message || "Registration failed");
+		}
 	};
 
 	return (

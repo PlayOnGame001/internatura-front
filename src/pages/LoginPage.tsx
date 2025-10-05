@@ -1,21 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { z } from "zod";
 import { Button, Input } from "../UI";
-
-const schema = z.object({
-	username: z
-		.string()
-		.min(1, "Username is required")
-		.min(3, "Username must be at least 3 characters long."),
-	password: z
-		.string()
-		.min(1, "Password is required")
-		.min(3, "The password must contain at least 3 characters."),
-});
-
-type FormData = z.infer<typeof schema>;
+import { loginUser } from "../data/Api/api";
+import { userLoginSchema, type UserLoginFormData } from "../UI/userLogin.schema";
 
 export default function LoginPage() {
 	const navigate = useNavigate();
@@ -23,18 +11,18 @@ export default function LoginPage() {
 		register,
 		handleSubmit,
 		formState: { errors },
-	} = useForm<FormData>({
-		resolver: zodResolver(schema),
+	} = useForm<UserLoginFormData>({
+		resolver: zodResolver(userLoginSchema),
 	});
 
-	const onSubmit = ({ username, password }: FormData) => {
-		if (
-			(username === "admin" && password === "admin") ||
-			(username === "test" && password === "test")
-		) {
-			return navigate("/news");
+	const onSubmit = async ({ email, password }: UserLoginFormData) => {
+		try {
+			const { token } = await loginUser(email, password);
+			localStorage.setItem("token", token);
+			navigate("/news");
+		} catch (err: any) {
+			alert(err.message || "Login failed");
 		}
-		return alert("Incorrect data");
 	};
 
 	return (
@@ -47,10 +35,11 @@ export default function LoginPage() {
 
 				<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 					<Input
-						{...register("username")}
-						label="Name"
-						placeholder="Enter your name"
-						error={errors.username?.message}
+						{...register("email")}
+						type="email"
+						label="Email"
+						placeholder="Enter your email"
+						error={errors.email?.message}
 					/>
 					<Input
 						{...register("password")}
