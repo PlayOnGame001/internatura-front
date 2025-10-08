@@ -38,26 +38,6 @@ export default function PageAdsDebug() {
             )
           );
           addLog("✅ Prebid event subscriptions done");
-
-          window.pbjs.addAdUnits([
-            {
-              code: "div-gpt-ad-1",
-              mediaTypes: { banner: { sizes: [[300, 250]] } },
-              bids: [
-                {
-                  bidder: "appnexus",
-                  params: { placementId: "123456" },
-                },
-              ],
-            },
-          ]);
-
-          addLog("🚀 Starting test auction...");
-          window.pbjs.requestBids({
-            bidsBackHandler: function (bidResponses: any) {
-              addLog("📦 Bids received: " + JSON.stringify(bidResponses));
-            },
-          });
         });
       }
     }, 200);
