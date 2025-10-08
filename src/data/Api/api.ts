@@ -102,6 +102,7 @@ export async function sendBidRequest(
   return res.json();
 }
 
+//Statistic
 export interface AdEvent {
   type: string;
   timestamp: string;
@@ -114,7 +115,7 @@ export interface AdEvent {
 export const sendAdEvents = async (events: AdEvent[]) => {
   const payload = JSON.stringify(events);
   try {
-    await fetch('/api/statistics/event', {
+    await fetch(`${API_URL}/api/statistics/event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payload,
@@ -128,6 +129,14 @@ export const sendAdEventsBeacon = (events: AdEvent[]) => {
   if (navigator.sendBeacon) {
     const payload = JSON.stringify(events);
     const blob = new Blob([payload], { type: 'application/json' });
-    navigator.sendBeacon('/api/statistics/event', blob);
+    navigator.sendBeacon(`${API_URL}/api/statistics/event`, blob);
   }
 };
+
+export async function getStatistics(params?: Record<string, any>) {
+  const query = new URLSearchParams(params || {}).toString();
+  const res = await fetch(`${API_URL}/api/statistics/events?${query}`);
+  if (!res.ok) throw new Error("Failed to fetch statistics");
+  return res.json();
+}
+

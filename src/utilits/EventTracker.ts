@@ -4,7 +4,7 @@ class EventTracker {
   private cache: AdEvent[] = [];
   private maxCacheSize = 20;
   private flushInterval = 5000;
-  private timer: ReturnType<typeof setInterval> | null = null; // исправлено для браузера
+  private timer: ReturnType<typeof setInterval> | null = null;
   private enabled = false;
 
   start() {
