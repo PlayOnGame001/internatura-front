@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { initBannerAd } from "../utilits/ad";
 import { tracker } from "../utilits/EventTracker";
 import type { AdEvent } from "../utilits/EventTracker";
@@ -12,64 +12,83 @@ interface BannerProps {
 }
 
 const Banner: React.FC<BannerProps> = ({ id, sizes, bidders }) => {
+  const initialized = useRef(false);
+
   useEffect(() => {
     if (import.meta.env.VITE_ENABLE_ADS !== "true") return;
+    if (initialized.current) return;
+
+    initialized.current = true;
 
     const start = () => {
       initBannerAd(id, sizes, bidders);
 
-      const loadEvent: AdEvent = { type: 'load_ad_module', adUnit: id, timestamp: new Date().toISOString()};
+      const loadEvent: AdEvent = { 
+        type: 'load_ad_module', 
+        adUnit: id, 
+        timestamp: new Date().toISOString()
+      };
       tracker.track(loadEvent);
 
       if (window.pbjs) {
         window.pbjs.onEvent('auctionInit', (data: any) => {
-          const event: AdEvent = {
-            type: 'auctionInit',
-            adUnit: id,
-            cpm: data.cpm,
-            creativeId: data.creativeId,
-            timestamp: new Date().toISOString()
-          };
-          tracker.track(event);
+          if (data.adUnits?.[0]?.code === id) {
+            const event: AdEvent = {
+              type: 'auctionInit',
+              adUnit: id,
+              cpm: data.cpm,
+              creativeId: data.creativeId,
+              timestamp: new Date().toISOString()
+            };
+            tracker.track(event);
+          }
         });
 
-        window.pbjs.onEvent('bidRequested', () => {
-          const event: AdEvent = {
-            type: 'bidRequested',
-            adUnit: id,
-            timestamp: new Date().toISOString()
-          };
-          tracker.track(event);
+        window.pbjs.onEvent('bidRequested', (data: any) => {
+          if (data.adUnits?.[0]?.code === id) {
+            const event: AdEvent = {
+              type: 'bidRequested',
+              adUnit: id,
+              timestamp: new Date().toISOString()
+            };
+            tracker.track(event);
+          }
         });
 
-        window.pbjs.onEvent('auctionEnd', () => {
-          const event: AdEvent = {
-            type: 'auctionEnd',
-            adUnit: id,
-            timestamp: new Date().toISOString(),
-          };
-          tracker.track(event);
+        window.pbjs.onEvent('auctionEnd', (data: any) => {
+          if (data.adUnits?.[0]?.code === id) {
+            const event: AdEvent = {
+              type: 'auctionEnd',
+              adUnit: id,
+              timestamp: new Date().toISOString(),
+            };
+            tracker.track(event);
+          }
         });
 
         window.pbjs.onEvent('bidResponse', (data: any) => {
-          const event: AdEvent = {
-            type: 'bidResponse',
-            adUnit: id,
-            cpm: data.cpm,
-            timestamp: new Date().toISOString()
-          };
-          tracker.track(event);
+          if (data.adUnitCode === id) {
+            const event: AdEvent = {
+              type: 'bidResponse',
+              adUnit: id,
+              cpm: data.cpm,
+              timestamp: new Date().toISOString()
+            };
+            tracker.track(event);
+          }
         });
 
         window.pbjs.onEvent('bidWon', (data: any) => {
-          const event: AdEvent = {
-            type: 'bidWon',
-            adUnit: id,
-            cpm: data.cpm,
-            creativeId: data.creativeId,
-            timestamp: new Date().toISOString()
-          };
-          tracker.track(event);
+          if (data.adUnitCode === id) {
+            const event: AdEvent = {
+              type: 'bidWon',
+              adUnit: id,
+              cpm: data.cpm,
+              creativeId: data.creativeId,
+              timestamp: new Date().toISOString()
+            };
+            tracker.track(event);
+          }
         });
       }
     };
@@ -85,6 +104,7 @@ const Banner: React.FC<BannerProps> = ({ id, sizes, bidders }) => {
       document.body.appendChild(script);
     }
   }, [id, sizes, bidders]);
+
   if (import.meta.env.VITE_ENABLE_ADS !== "true") {
     return (
       <div
@@ -105,6 +125,19 @@ const Banner: React.FC<BannerProps> = ({ id, sizes, bidders }) => {
       </div>
     );
   }
+
+  return (
+    <div
+      id={id}
+      style={{
+        width: sizes[0][0],
+        height: sizes[0][1],
+        minWidth: sizes[0][0],
+        minHeight: sizes[0][1],
+        position: "relative",
+      }}
+    />
+  );
 };
 
 export default Banner;

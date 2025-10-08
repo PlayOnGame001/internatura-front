@@ -1,168 +1,211 @@
 import { useEffect, useState } from "react";
+import { getStatistics } from "../data/Api/api";
 
 interface StatsRow {
   id: string;
   eventType: string;
-  timestamp: string;
+  ts: string;
+  ts_ms: number;
   pageUrl: string;
   adUnit?: string;
   creativeId?: string;
   cpm?: number;
+  adapter?: string;
+  geo?: string;
 }
-
-const mockData: StatsRow[] = Array.from({ length: 120 }).map((_, i) => ({
-  id: `${i + 1}`,
-  eventType: ["load_page", "load_ad_module", "auctionInit", "auctionEnd", "bidRequested", "bidResponse", "bidWon"][i % 7],
-  timestamp: new Date(Date.now() - i * 1000 * 60 * 5).toISOString(),
-  pageUrl: `/page/${i % 5}`,
-  adUnit: i % 2 === 0 ? `banner-left` : `banner-right`,
-  creativeId: `creative-${i % 10}`,
-  cpm: parseFloat((Math.random() * 5).toFixed(2)),
-}));
 
 const PAGE_SIZE = 20;
 
+const EVENT_TYPES = [
+  "load_page",
+  "load_ad_module",
+  "auctionInit",
+  "auctionEnd",
+  "bidRequested",
+  "bidResponse",
+  "bidWon",
+];
+
+const COLUMNS = [
+  "ID",
+  "AD init",
+  "EVENT",
+  "TS",
+  "PAGE URL",
+  "Creative ID",
+  "CPM",
+  "Adapter",
+  "Geo",
+];
+
 export default function StatisticPage() {
   const [data, setData] = useState<StatsRow[]>([]);
-  const [filteredData, setFilteredData] = useState<StatsRow[]>([]);
+  const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState({
-    eventType: "",
-    adUnit: "",
-    creativeId: "",
-    cpmMin: "",
-    cpmMax: "",
-  });
+  const [activeEvents, setActiveEvents] = useState<string[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["ID", "EVENT"]);
 
-  useEffect(() => {
-    // НАПОМИНАЛКА СЮДА БЕК
-    setData(mockData);
-  }, []);
-
-  useEffect(() => {
-    let result = [...data];
-
-    if (filters.eventType) {
-      result = result.filter((row) => row.eventType === filters.eventType);
-    }
-    if (filters.adUnit) {
-      result = result.filter((row) => row.adUnit === filters.adUnit);
-    }
-    if (filters.creativeId) {
-      result = result.filter((row) => row.creativeId?.includes(filters.creativeId));
-    }
-    if (filters.cpmMin) {
-      result = result.filter((row) => (row.cpm ?? 0) >= parseFloat(filters.cpmMin));
-    }
-    if (filters.cpmMax) {
-      result = result.filter((row) => (row.cpm ?? 0) <= parseFloat(filters.cpmMax));
-    }
-
-    setFilteredData(result);
+  const toggleEventType = (type: string) => {
+    setActiveEvents((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
     setCurrentPage(1);
-  }, [filters, data]);
+  };
 
-  const pageCount = Math.ceil(filteredData.length / PAGE_SIZE);
-  const pageData = filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const toggleColumn = (col: string) => {
+    setVisibleColumns((prev) =>
+      prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]
+    );
+  };
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const params: Record<string, any> = {
+          page: currentPage,
+          limit: PAGE_SIZE,
+        };
+
+        if (activeEvents.length) params.eventType = activeEvents.join(",");
+
+        const response = await getStatistics(params);
+        setData(response.data || []);
+        setTotal(response.total || 0);
+      } catch (err) {
+        console.error("Ошибка при загрузке статистики:", err);
+      }
+    }
+
+    fetchData();
+  }, [activeEvents, currentPage]);
+
+  const pageCount = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="p-6 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6">Statistics Grid</h1>
-
-      {/* Filters */}
-      <div className="flex gap-4 flex-wrap mb-6">
-        <select
-          value={filters.eventType}
-          onChange={(e) => setFilters({ ...filters, eventType: e.target.value })}
-          className="border p-2 rounded"
-        >
-          <option value="">All Events</option>
-          <option value="load_page">load_page</option>
-          <option value="load_ad_module">load_ad_module</option>
-          <option value="auctionInit">auctionInit</option>
-          <option value="auctionEnd">auctionEnd</option>
-          <option value="bidRequested">bidRequested</option>
-          <option value="bidResponse">bidResponse</option>
-          <option value="bidWon">bidWon</option>
-        </select>
-
-        <input
-          type="text"
-          placeholder="Ad Unit"
-          value={filters.adUnit}
-          onChange={(e) => setFilters({ ...filters, adUnit: e.target.value })}
-          className="border p-2 rounded"
-        />
-
-        <input
-          type="text"
-          placeholder="Creative ID"
-          value={filters.creativeId}
-          onChange={(e) => setFilters({ ...filters, creativeId: e.target.value })}
-          className="border p-2 rounded"
-        />
-
-        <input
-          type="number"
-          placeholder="Min CPM"
-          value={filters.cpmMin}
-          onChange={(e) => setFilters({ ...filters, cpmMin: e.target.value })}
-          className="border p-2 rounded"
-        />
-
-        <input
-          type="number"
-          placeholder="Max CPM"
-          value={filters.cpmMax}
-          onChange={(e) => setFilters({ ...filters, cpmMax: e.target.value })}
-          className="border p-2 rounded"
-        />
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-2">Filter by Event:</h2>
+        <div className="flex flex-wrap gap-2">
+          {EVENT_TYPES.map((type) => (
+            <button
+              key={type}
+              onClick={() => toggleEventType(type)}
+              className={`px-3 py-1 rounded border transition ${
+                activeEvents.includes(type)
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-gray-200 text-black border-gray-300 hover:bg-gray-300"
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Table */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-2">Columns:</h2>
+        <div className="flex flex-wrap gap-2">
+          {COLUMNS.map((col) => (
+            <button
+              key={col}
+              onClick={() => toggleColumn(col)}
+              className={`px-3 py-1 rounded border transition ${
+                visibleColumns.includes(col)
+                  ? "bg-green-600 text-white border-green-600"
+                  : "bg-gray-200 text-black border-gray-300 hover:bg-gray-300"
+              }`}
+            >
+              {col}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-4 text-gray-600">Total records: {total}</div>
+
       <div className="overflow-x-auto">
         <table className="table-auto border-collapse w-full">
           <thead>
             <tr>
-              <th className="border px-2 py-1">ID</th>
-              <th className="border px-2 py-1">Event</th>
-              <th className="border px-2 py-1">Timestamp</th>
-              <th className="border px-2 py-1">Page URL</th>
-              <th className="border px-2 py-1">Ad Unit</th>
-              <th className="border px-2 py-1">Creative ID</th>
-              <th className="border px-2 py-1">CPM</th>
+              {visibleColumns.includes("ID") && <th className="border px-2 py-1">ID</th>}
+              {visibleColumns.includes("AD init") && <th className="border px-2 py-1">Ad Unit</th>}
+              {visibleColumns.includes("EVENT") && <th className="border px-2 py-1">Event</th>}
+              {visibleColumns.includes("TS") && <th className="border px-2 py-1">TS</th>}
+              {visibleColumns.includes("PAGE URL") && <th className="border px-2 py-1">Page URL</th>}
+              {visibleColumns.includes("Creative ID") && <th className="border px-2 py-1">Creative ID</th>}
+              {visibleColumns.includes("CPM") && <th className="border px-2 py-1">CPM</th>}
+              {visibleColumns.includes("Adapter") && <th className="border px-2 py-1">Adapter</th>}
+              {visibleColumns.includes("Geo") && <th className="border px-2 py-1">Geo</th>}
             </tr>
           </thead>
           <tbody>
-            {pageData.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-100">
-                <td className="border px-2 py-1">{row.id}</td>
-                <td className="border px-2 py-1">{row.eventType}</td>
-                <td className="border px-2 py-1">{new Date(row.timestamp).toLocaleString()}</td>
-                <td className="border px-2 py-1">{row.pageUrl}</td>
-                <td className="border px-2 py-1">{row.adUnit}</td>
-                <td className="border px-2 py-1">{row.creativeId}</td>
-                <td className="border px-2 py-1">{row.cpm?.toFixed(2)}</td>
+            {data.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={visibleColumns.length}
+                  className="border px-2 py-4 text-center text-gray-500"
+                >
+                  No data found
+                </td>
               </tr>
-            ))}
+            ) : (
+              data.map((row, index) => (
+                <tr key={`${row.id}-${row.ts_ms}-${index}`}>
+                  {visibleColumns.includes("ID") && (
+                    <td className="border px-2 py-1 text-xs">{row.id}</td>
+                  )}
+                  {visibleColumns.includes("AD init") && (
+                    <td className="border px-2 py-1">{row.adUnit || "-"}</td>
+                  )}
+                  {visibleColumns.includes("EVENT") && (
+                    <td className="border px-2 py-1">{row.eventType}</td>
+                  )}
+                  {visibleColumns.includes("TS") && (
+                    <td className="border px-2 py-1">
+                      {new Date(row.ts).toLocaleString()}
+                    </td>
+                  )}
+                  {visibleColumns.includes("PAGE URL") && (
+                    <td className="border px-2 py-1 text-xs max-w-xs truncate">
+                      {row.pageUrl}
+                    </td>
+                  )}
+                  {visibleColumns.includes("Creative ID") && (
+                    <td className="border px-2 py-1">{row.creativeId || "-"}</td>
+                  )}
+                  {visibleColumns.includes("CPM") && (
+                    <td className="border px-2 py-1">
+                      {row.cpm != null ? row.cpm.toFixed(2) : "-"}
+                    </td>
+                  )}
+                  {visibleColumns.includes("Adapter") && (
+                    <td className="border px-2 py-1">{row.adapter || "-"}</td>
+                  )}
+                  {visibleColumns.includes("Geo") && (
+                    <td className="border px-2 py-1">{row.geo || "-"}</td>
+                  )}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex gap-2 mt-4">
+      <div className="flex gap-2 mt-4 items-center">
         <button
           disabled={currentPage === 1}
           onClick={() => setCurrentPage((p) => p - 1)}
-          className="px-3 py-1 border rounded disabled:opacity-50"
+          className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Prev
         </button>
-        <span className="px-3 py-1">{currentPage} / {pageCount}</span>
+        <span className="px-3 py-1">
+          Page {currentPage} of {pageCount || 1}
+        </span>
         <button
-          disabled={currentPage === pageCount}
+          disabled={currentPage === pageCount || pageCount === 0}
           onClick={() => setCurrentPage((p) => p + 1)}
-          className="px-3 py-1 border rounded disabled:opacity-50"
+          className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next
         </button>

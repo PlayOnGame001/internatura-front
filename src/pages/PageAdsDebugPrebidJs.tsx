@@ -9,7 +9,8 @@ declare global {
 export default function PageAdsDebug() {
   const [logs, setLogs] = useState<string[]>([]);
 
-  const addLog = (msg: string) => setLogs(prev => [msg, ...prev]);
+  const addLog = (msg: string) =>
+    setLogs(prev => [`${new Date().toLocaleTimeString()} — ${msg}`, ...prev]);
 
   useEffect(() => {
     if (!window.pbjs) {
@@ -37,9 +38,29 @@ export default function PageAdsDebug() {
             )
           );
           addLog("✅ Prebid event subscriptions done");
+
+          window.pbjs.addAdUnits([
+            {
+              code: "div-gpt-ad-1",
+              mediaTypes: { banner: { sizes: [[300, 250]] } },
+              bids: [
+                {
+                  bidder: "appnexus",
+                  params: { placementId: "123456" },
+                },
+              ],
+            },
+          ]);
+
+          addLog("🚀 Starting test auction...");
+          window.pbjs.requestBids({
+            bidsBackHandler: function (bidResponses: any) {
+              addLog("📦 Bids received: " + JSON.stringify(bidResponses));
+            },
+          });
         });
       }
-    }, 100);
+    }, 200);
 
     const timeout = setTimeout(() => clearInterval(waitForPbjs), 10000);
     return () => clearTimeout(timeout);
