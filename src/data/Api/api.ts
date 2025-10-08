@@ -57,11 +57,29 @@ export async function getLineItems() {
   return res.json();
 }
 
-export async function createLineItem(data: any) {
+export interface LineItemData {
+  size: string;
+  minCpm: number;
+  maxCpm: number;
+  geo: string;
+  adType: string;
+  frequency: number;
+  creative: File;
+}
+
+export async function createLineItem(data: LineItemData) {
+  const formData = new FormData();
+  formData.append('size', data.size);
+  formData.append('minCpm', data.minCpm.toString());
+  formData.append('maxCpm', data.maxCpm.toString());
+  formData.append('geo', data.geo);
+  formData.append('adType', data.adType);
+  formData.append('frequency', data.frequency.toString());
+  formData.append('creative', data.creative);
+
   const res = await fetch(`${API_URL}/line-item`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: formData,
   });
 
   if (!res.ok) {
@@ -139,4 +157,3 @@ export async function getStatistics(params?: Record<string, any>) {
   if (!res.ok) throw new Error("Failed to fetch statistics");
   return res.json();
 }
-

@@ -9,6 +9,7 @@ const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const NewsPage = lazy(() => import("./pages/PageNews"));
 const AdsDebugPagePrebidJs = lazy(() => import("./pages/PageAdsDebugPrebidJs"));
 const StatPage = lazy(() => import("./pages/StatisticPage"));
+const LineItemsPage = lazy(() => import("./pages/LineItem"));
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/news" element={<NewsPage />} />
               <Route path="/ads-debug-prebidjs" element={<AdsDebugPagePrebidJs />} />
               <Route path="/statistik" element={<StatPage />} />
+              <Route path="/line-items" element={<LineItemsPage />} />
             </Routes>
           </Suspense>
         </main>

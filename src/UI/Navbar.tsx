@@ -7,6 +7,7 @@ export default function Navbar() {
       <div className="flex gap-4">
         <Link to="/news" className="hover:text-gray-300">News</Link>
         {/* <Link to="/ads-debug-prebidjs" className="hover:text-gray-300">Ads Debug</Link> */}
+        <Link to="/line-items" className="hover:text-gray-300">Line Item</Link>
         <Link to="/statistik" className="hover:text-gray-300">Statistics</Link>
         <Link to="/log" className="hover:text-gray-300">Login</Link>
       </div>
